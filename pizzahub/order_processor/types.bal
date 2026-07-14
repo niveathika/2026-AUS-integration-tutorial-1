@@ -38,3 +38,22 @@ public type DelivaryResponse record {|
     int etaMinutes;
     string orderId;
 |};
+
+public type InvoiceLineItem record {|
+    string description;
+    int quantity;
+    decimal unitPrice;
+    decimal lineTotal;
+|};
+
+public type Invoice record {|
+    string invoiceId;
+    string customerName;
+    string billingAddress;
+    string contactEmail;
+    InvoiceLineItem[] lineItems;
+    decimal subTotal;
+    decimal deliveryFee;
+    decimal tax;
+    decimal total;
+|};

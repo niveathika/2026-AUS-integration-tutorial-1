@@ -21,10 +21,11 @@ service /pizza on httpDefaultListener {
                     deliveryPartner: delivaryResponse.deliveryPartner,
                     deliveryEtaMinutes: delivaryResponse.etaMinutes
                 };
-                gmail:Message gmailMessage = check gmailClient->/users/[string `wso2integrationdemos@gmail.com`]/messages/send.post({
+                Invoice invoice = toInvoice(orderId, payload);
+                gmail:Message _ = check gmailClient->/users/[string `wso2integrationdemos@gmail.com`]/messages/send.post({
                     to: [payload.email],
-                    subject: "Order Status",
-                    bodyInText: string `Order ${orderId} status is : ${kitchenResponse.status}`
+                    subject: string `Order ${orderId} - ${kitchenResponse.status}`,
+                    bodyInHtml: renderInvoice(invoice)
                 });
                 return orderResponse;
             } else {
