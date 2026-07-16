@@ -152,6 +152,111 @@ Code:
 ```ballerina
 DelivaryResponse delivaryResponse = check delivaryService->/quotes.get(orderId = orderId, address = payload.address);
 ```
+
+**Invoice (Data Mapper)**
+
+Once the order is accepted, the order request is transformed into an `Invoice` using the Data Mapper. This is the payload rendered into the confirmation email.
+
+Types :
+
+```ballerina
+public type InvoiceLineItem record {|
+    string description;
+    int quantity;
+    decimal unitPrice;
+    decimal lineTotal;
+|};
+
+public type Invoice record {|
+    string invoiceId;
+    string customerName;
+    string billingAddress;
+    string contactEmail;
+    InvoiceLineItem[] lineItems;
+    decimal subTotal;
+    decimal deliveryFee;
+    decimal tax;
+    decimal total;
+|};
+```
+
+Sample Invoice (from the sample request above) :
+
+```json
+{
+  "invoiceId": "INV-ORD-10045",
+  "customerName": "John Doe",
+  "billingAddress": "123 Main St, Austin, TX",
+  "contactEmail": "johnd@gmail.com",
+  "lineItems": [
+    {
+      "description": "Margherita (Large)",
+      "quantity": 1,
+      "unitPrice": 1800.00,
+      "lineTotal": 1800.00
+    },
+    {
+      "description": "Pepperoni (Medium)",
+      "quantity": 2,
+      "unitPrice": 1800.00,
+      "lineTotal": 3600.00
+    }
+  ],
+  "subTotal": 5400.00,
+  "deliveryFee": 350.00,
+  "tax": 540.00,
+  "total": 6290.00
+}
+```
+
+Code (Data Mapper) :
+
+```ballerina
+function toInvoice(string orderId, OrderRequest payload) returns Invoice => let
+    InvoiceLineItem[] lineItems = from PizzaItem item in payload.items
+        select {
+            description: string `${item.pizza} (${item.size})`,
+            quantity: item.quantity,
+            unitPrice: priceOf(item),
+            lineTotal: <decimal>item.quantity * priceOf(item)
+        },
+    decimal subTotal = decimal:sum(0.0, ...from InvoiceLineItem line in lineItems
+        select line.lineTotal)
+    in {
+        invoiceId: "INV-" + orderId,
+        customerName: payload.customerName,
+        billingAddress: payload.address,
+        contactEmail: payload.email,
+        lineItems: lineItems,
+        subTotal: subTotal,
+        deliveryFee: deliveryFee,
+        tax: subTotal * taxRate,
+        total: subTotal + deliveryFee + (subTotal * taxRate)
+    };
+```
+
+**Sending the Confirmation Email**
+
+The invoice is sent as an HTML email using the [Gmail connector](https://central.ballerina.io/ballerinax/googleapis.gmail/4.2.0). No custom types need to be copied — the connector supplies the request payload and the `gmail:Message` response. The only project type reused is `Invoice` (above), which `renderInvoice` turns into the HTML body.
+
+Configurables (OAuth credentials for the Gmail connector) :
+
+```ballerina
+configurable string refreshToken = ?;
+configurable string clientId = ?;
+configurable string clientSecret = ?;
+```
+
+Code :
+
+```ballerina
+Invoice invoice = toInvoice(orderId, payload);
+gmail:Message _ = check gmailClient->/users/[string `wso2integrationdemos@gmail.com`]/messages/send.post({
+    to: [payload.email],
+    subject: string `Order ${orderId} - ${kitchenResponse.status}`,
+    bodyInHtml: renderInvoice(invoice)
+});
+```
 ---
 
 ### Scenario 2 — Kitchen Event Processing
