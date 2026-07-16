@@ -131,7 +131,7 @@ Sample Response :
 
 **Delivary Service**
 
-URL - https://e8f34e4e-e9bb-4799-b725-7173d271fa62-prod.e1-us-east-azure.choreoapis.dev/2on2026-ntegration/delivaryservice/v1.0
+URL - https://e8f34e4e-e9bb-4799-b725-7173d271fa62-dev-internal.e1-us-east-azure.internal.choreoapis.dev/tcs-additional/delivaryservice/v1.0
 
 Resource - GET `/quotes`
 
